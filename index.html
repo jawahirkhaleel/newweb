@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skardu Web GIS</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Geocoder CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        button {
+            margin: 5px 0;
+            padding: 8px 12px;
+            cursor: pointer;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .dark-mode {
+            background-color: #222;
+            color: #eee;
+        }
+        .dark-mode #map {
+            filter: brightness(0.8) contrast(1.2);
+        }
+        .coordinates-display {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(255,255,255,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+        }
+        .dark-mode .coordinates-display {
+            background: rgba(0,0,0,0.8);
+            color: #eee;
+        }
+        .map-links {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+        .map-links-btn {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .map-links-btn:hover {
+            color: #2980b9;
+        }
+        .map-links-menu {
+            display: none;
+            position: absolute;
+            bottom: 40px;
+            right: 0;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+            min-width: 200px;
+            padding: 5px 0;
+        }
+        .map-links:hover .map-links-menu {
+            display: block;
+        }
+        .map-links-menu a {
+            display: block;
+            padding: 8px 15px;
+            color: #333;
+            text-decoration: none;
+        }
+        .map-links-menu a:hover {
+            background: #f0f0f0;
+        }
+        .map-links-menu i {
+            width: 20px;
+            text-align: center;
+            margin-right: 8px;
+        }
+        .dark-mode .map-links-btn,
+        .dark-mode .map-links-menu {
+            background: rgba(0,0,0,0.8);
+            color: #5dade2;
+        }
+        .dark-mode .map-links-menu a {
+            color: #eee;
+        }
+        .dark-mode .map-links-menu a:hover {
+            background: #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="controls">
+        <button id="themeToggle"><i class="fas fa-moon"></i> Toggle Theme</button>
+        <button id="addMarkerBtn"><i class="fas fa-map-marker-alt"></i> Add Marker</button>
+        <button id="clearMarkersBtn"><i class="fas fa-trash"></i> Clear Markers</button>
+        <button id="getCoordinatesBtn"><i class="fas fa-crosshairs"></i> Get My Location</button>
+        <button id="downloadCoordsBtn"><i class="fas fa-download"></i> Download Coordinates</button>
+    </div>
+    <div class="coordinates-display" id="coordinatesDisplay">
+        Click on the map to see coordinates here
+    </div>
+    <div class="map-links">
+        <button class="map-links-btn">
+            <i class="fas fa-map"></i> Map Providers
+        </button>
+        <div class="map-links-menu">
+            <a href="https://www.openstreetmap.org/" target="_blank">
+                <i class="fab fa-openstreetmap"></i> OpenStreetMap
+            </a>
+            <a href="https://www.esri.com/en-us/home" target="_blank">
+                <i class="fas fa-globe-americas"></i> Esri
+            </a>
+            <a href="https://www.google.com/maps" target="_blank">
+                <i class="fab fa-google"></i> Google Maps
+            </a>
+            <a href="https://www.bing.com/maps" target="_blank">
+                <i class="fab fa-microsoft"></i> Bing Maps
+            </a>
+            <a href="https://www.mapbox.com/" target="_blank">
+                <i class="fas fa-map-marked-alt"></i> Mapbox
+            </a>
+            <a href="https://www.arcgis.com/home/index.html" target="_blank">
+                <i class="fas fa-map-pin"></i> ArcGIS Online
+            </a>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Geocoder -->
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <!-- Font Awesome -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <!-- FileSaver.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script>
+        // Initialize the map centered on Skardu
+        const map = L.map('map').setView([35.2975, 75.6337], 12);
+
+        // Define all basemaps
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        const osmHot = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by Humanitarian OpenStreetMap Team'
+        });
+
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+        });
+
+        const googleRoads = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            attribution: '© Google Maps'
+        });
+
+        const googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            attribution: '© Google Satellite'
+        });
+
+        const glacierLayer = L.tileLayer('https://tiles.glacier.eco/basemap/{z}/{x}/{y}.png', {
+            attribution: 'Glacier Basemap'
+        });
+
+        // Add baseMaps and overlayMaps to layer control
+        const baseMaps = {
+            "OpenStreetMap": osm,
+            "OpenStreetMap.HOT": osmHot,
+            "Google Roads": googleRoads,
+            "Google Satellite": googleSatellite,
+            "Esri Satellite": esriSatellite,
+            "Glacier Map": glacierLayer
+        };
+
+        // Add layer control to map
+        L.control.layers(baseMaps, null, {position: 'topright'}).addTo(map);
+
+        // Add geocoder control
+        L.Control.geocoder({
+            defaultMarkGeocode: false,
+            position: 'topleft'
+        })
+        .on('markgeocode', function(e) {
+            const bbox = e.geocode.bbox;
+            const poly = L.polygon([
+                bbox.getSouthEast(),
+                bbox.getNorthEast(),
+                bbox.getNorthWest(),
+                bbox.getSouthWest()
+            ]);
+            map.fitBounds(poly.getBounds());
+            
+            // Add marker for the searched location
+            const marker = L.marker(e.geocode.center)
+                .addTo(map)
+                .bindPopup(e.geocode.name || "Searched Location");
+            markers.push(marker);
+        })
+        .addTo(map);
+
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const icon = themeToggle.querySelector('i');
+            icon.classList.toggle('fa-moon');
+            icon.classList.toggle('fa-sun');
+        });
+
+        // Marker handling
+        let markers = [];
+        let addMarkerMode = false;
+
+        document.getElementById('addMarkerBtn').addEventListener('click', () => {
+            addMarkerMode = true;
+            document.getElementById('coordinatesDisplay').textContent = "Click on the map to add a marker";
+        });
+
+        document.getElementById('clearMarkersBtn').addEventListener('click', () => {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            document.getElementById('coordinatesDisplay').textContent = "Markers cleared";
+            setTimeout(() => {
+                document.getElementById('coordinatesDisplay').textContent = "Click on the map to see coordinates";
+            }, 2000);
+        });
+
+        // Click on map to add marker or show coordinates
+        map.on('click', e => {
+            const coordsDisplay = document.getElementById('coordinatesDisplay');
+            if (addMarkerMode) {
+                const marker = L.marker(e.latlng).addTo(map);
+                marker.bindPopup(`Lat: ${e.latlng.lat.toFixed(5)}<br>Lng: ${e.latlng.lng.toFixed(5)}`);
+                markers.push(marker);
+                addMarkerMode = false;
+                coordsDisplay.innerHTML = `Marker added at:<br>Latitude: ${e.latlng.lat.toFixed(5)}<br>Longitude: ${e.latlng.lng.toFixed(5)}`;
+            } else {
+                coordsDisplay.innerHTML = `Clicked at:<br>Latitude: ${e.latlng.lat.toFixed(5)}<br>Longitude: ${e.latlng.lng.toFixed(5)}`;
+            }
+        });
+
+        // Get current coordinates
+        document.getElementById('getCoordinatesBtn').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    map.setView([lat, lng], 14);
+                    const marker = L.marker([lat, lng]).addTo(map)
+                        .bindPopup(`You are here:<br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`)
+                        .openPopup();
+                    markers.push(marker);
+                    
+                    document.getElementById('coordinatesDisplay').innerHTML = 
+                        `Your location:<br>Latitude: ${lat.toFixed(5)}<br>Longitude: ${lng.toFixed(5)}`;
+                }, () => {
+                    alert("Could not get your location. Please ensure location services are enabled.");
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        });
+
+        // Download coordinates
+        document.getElementById('downloadCoordsBtn').addEventListener('click', () => {
+            if (markers.length === 0) {
+                alert("No markers to download!");
+                return;
+            }
+
+            let csvContent = "Type,Latitude,Longitude,Description\n";
+            
+            markers.forEach((marker, index) => {
+                const latLng = marker.getLatLng();
+                const popupContent = marker.getPopup() ? marker.getPopup().getContent() : "";
+                csvContent += `Marker ${index + 1},${latLng.lat},${latLng.lng},"${popupContent.replace(/<br>/g, ' ')}"\n`;
+            });
+
+            // Add current view coordinates if no markers
+            if (markers.length === 0) {
+                const center = map.getCenter();
+                csvContent += `Map Center,${center.lat},${center.lng},"Current map view center"\n`;
+                const bounds = map.getBounds();
+                csvContent += `NW Corner,${bounds.getNorthWest().lat},${bounds.getNorthWest().lng},"North-West corner"\n`;
+                csvContent += `SE Corner,${bounds.getSouthEast().lat},${bounds.getSouthEast().lng},"South-East corner"\n`;
+            }
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            saveAs(blob, 'map_coordinates.csv');
+        });
+
+        // Add scale control
+        L.control.scale({position: 'bottomleft'}).addTo(map);
+
+        // Add a simple attribution control
+        const attribution = L.control.attribution({position: 'bottomright'});
+        attribution.addAttribution('Jawahir Web GIS');
+        attribution.addTo(map);
+    </script>
+</body>
+</html>jawahir <article>hussain</article>
+<h1>GIS Web</h1>
+<br>
+
